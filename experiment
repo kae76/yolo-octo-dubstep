@@ -1,0 +1,377 @@
+Running drupal, vagrant configured virtual box virtual machine with puphpet.com generated config files and komodo IDE debug setup
+
+revision history
+v1 2013-08-01 therobyouknow: initial draft
+v2 2013-08-02 edits by kae76 (please specify if any)
+v3 2013-08-02 therobyouknow:Added this revision history and note about Apache directive AllowOverride All needed to ensure clean-urls work for Drupal (and perhaps indeed other frameworks) - full exact details as to what to do here: https://drupal.org/node/735500#comment-7712261
+v4 2013-08-03 therobyouknow: Expanded on the background as to why this is a great idea and also how the steps are relevant to all PHP developments, including drupal
+v4.1 2013-08-03 therobyouknow:  just a few more words in the background section about the importance of being able to recreate dev environment in VM if screw up
+
+background
+
+After playing with social media, site builders such as Wix, tools such as Dreamweaver, you're now ready to step up to the next level and do serious web site development making use of one of the leading CMSs or frameworks - be it Drupal, Wordpress or Symfony. These are what many prominent successful sites use that stand out. 
+
+You want to develop out of the public view, try things out first before giving them limelight. This is what a local development environment on your machine can do for you. It's faster than working on a site live on the internet. Then when you are ready, you can push your site out to the world (tools to be covered in later edition of this guide, but they include ssh, sftp, rsync, drush).
+
+You may have used MAMP or some other utility to get a web server 'stack' (LAMP,WAMP) on your own machine and found that this works pretty well. The problem with directly putting a web server stack directly on your machine's "native" OS id that this is not going to be the same as what your site will run on when live and in production (where the OS here is likely to be a Linux distribution rather than Windows, Mac OS that runs on your machine.) You're also dependent on your own set up for your site to run and chances are the setup wasn't automated for you to be able to share your setup with others to be able to collaborate (Drupal being a community (and other frameworks too) this going to happen at some point, commonest scenario being recreating an issue you have one someone else's machine to help them help you). Finally if you 'screw up' your setup by misconfiguration (we're all human) then it will be hard to revert.
+
+By contrast, by setting up your development system in a virtual machine, you can recreate the system that your site will run on when in public. Which means that when you 'go live' with your site, there is a good chance it will run 'in the wild' as your development system and live system are the same. If you screw it up - just throw away the VM image and re-run your config scripts to rebuild, remove offending config statements as required, version control your scripts (git, github) so you can revert back. Nice huh?
+
+Most of this guide covers local development environment setup for PHP )upon which Drupal is based (and other frameworks too) so relevant to Drupal and toward the end Drupal is the main focus. You will need to follow all the instructions to get your Drupal setup in this way.
+
+The structure of this guide is 2 parts ~ 1: a quick checklist overview for quick reference, followed by detail on each of the steps
+
+checklist overview
+
+1. prerequisites: Oracle VirtualBox (virtualbox.org - 4.2.12 works well), Vagrant installed (vagrantup.com). Platform tested on: Mac OS
+2. get .zipped "manifest" from .zip file from puphpet.com wheezy64. set mysql root password (create any databases you need here, note settings leave everything else alone)
+3. unzip the zip file to place on your host machine where you want it, we call this your vagrant host folder
+4. in Vagrantfile of the unzipped folder: config.vm.synced_folder "./", "/var/www", id: "vagrant-root", :extra => "dmode=777,fmode=666"
+5. in terminal / command line window cd to the folder containing the unzipped vagrant files
+6. run Vagrant: vagrant up
+7. be patient while things are setup and downloaded - could take 30mins first time around if downloading the box file
+8. when finished open another terminal window, ssh into the VM
+9. in the VM, enabled the root user
+10. in the VM, as root user, if not created databases (in 2) or want to add more later do this now
+11. Download drupal to a folder in the web server root (/var/www/)
+12. Kick off the Drupal install
+12b NOTE: Apache directive AllowOverride All needed 
+
+Optional - if you want debugging with Komodo IDE 8
+
+13. Download xdebug.so from komodo - downloads.activestate.com/Komodo/releases/8.0.2/remotedebugging/ (get correct version of PHP remote debugging 32 or 64)
+14. Extract out the contents of the download from 13, sftp as root to the guest VM, rename the existing xdebug.so (to keep) and put xdebug.so from komodo
+15. ssh into the VM, as root, edit php.ini with xdebug setings from komodo - http://docs.activestate.com/komodo/8.0/debugphp.html
+16. restart the apache webserver on VM for the php changes to take effect
+17. Launch Komodo, create new project - specify path to be the drupal folder on the VM (in step 11) - folder is shared with host and it is a subfolder off the vagrant folder of the host - where you unzipped vagrant to and run vagrant up from e.g. vagrant/wheezy64/drupal8
+18. In Komodo preferences for debugger - settings: break on first break point, listen on port 9000, allow the debug connection
+19. Find a bit of your website code in Komodo that you know will be executed when the front page of the site is visited, set a breakpoint there
+20. Visit the site on a browser, e.g.: http://192.168.56.101/drupal8/index.php?XDEBUG_SESSION_START=1
+21. Observe that Komodo breaks on the breakpoint and asks about URI mapping (one-off question) - specify the local path as in 17. You can also set this up beforehand in URI settings in preferences to avoid being asked.
+
+
+Detail:
+
+1. Pre-requisites
+
+  - Tested on Mac OS X 10.8.4 - would it expect it to work on other versions and platforms (Linux, Windows -- with adjustments)
+  - Oracle Virtual Box 4.2.12 (regression was introduced in 4.2.14 that stopped Vagrant working)
+  - Vagrant 1.2 or greater
+  - Configurator from puphpet.com
+
+
+
+2. Go to https://puphpet.com/
+choose Debian Wheezy 7.0rc1 x64
+(reason: tried Precise and got fatal errors so sticking with Wheezy for now, haven't tried the others yet)
+
+Databases in the configurator:
+must do this:
+set the MySQL Root Password
+reason: "MySQL will only be installed when a password is entered here."
+- I just use 'root' as the password
+
+Create Database
+(you'll need this before running the Drupal install)
+
+I suggest two options
+
+Option 1: create databases users and passwords in puphpet - see the section in the configurator on puphpet.com
+
+Option 2: leave as is and create them in the VM (see steps later)
+
+Note the IP address of the machine ( you will need this for ssh later )
+
+Then click "Create My Manifest" button at the bottom
+
+leave everything else alone and click 'create manifest' button to download the generated zip file with your vagrant config
+
+Note just for info:
+PHP
+php5-mysql is automatically installed, not an option for wheezy64 - I observed that puphpet.com makes it mandatory 
+
+
+
+3. unzipped the zip file to place on your host machine
+
+where you want it - e.g. for me I put mine here: /Users/robdaviswork/work/projects/vagrant/wheezy64
+this is your vagrant host folder
+
+
+4. In the Vagrantfile in your vagrant host folder
+
+important adjustment:
+
+config.vm.synced_folder "./", "/var/www", id: "vagrant-root"
+
+becomes:
+
+config.vm.synced_folder "./", "/var/www", id: "vagrant-root", :extra => "dmode=777,fmode=666"
+
+
+credit: http://serverfault.com/questions/398414/vagrant-set-default-share-permissions
+
+reason (and notes): 
+- drupal install fails with permissions issues - the installer was not able write to files without this adjustment
+- background: around the internet there are some folks also having issues around this so it looks like a fairly common issue (may be a bug with vagrant, virtual box, or just that we need a better way to configure sharing between host and guest than this)
+- even with this fix, chmod is ignored on the guest vm but the files are fully writeable on the guest so the install of drupal passes
+- ultimately, it would be my preference to not use this approach but rather instead use samba (credit: @blowski) so will be looking to work out how to configure samba in vagrant (one of the key things I need to learn is how to automate in vagrant the appending of config statements onto existing files)
+
+5. have a terminal window ready on your host, cd to your host vagrant folder
+
+
+6. then issue command: vagrant up
+
+
+7. be patient while things are setup and downloaded - could take 30mins first time around if downloading the box file
+
+
+8. when vagrant finished (successfully)...
+
+To log into the VM:
+ssh vagrant@ip
+password: vagrant
+
+where ip address is the one shown in the puphpet.com configurator page
+example for: 192.168.56.101
+
+ssh vagrant@192.168.56.101
+password: vagrant
+
+
+9.
+
+Unlock (enabling) the root account:
+
+You'll probably want to be the root user at some point
+
+vagrant@lucid32:~$ sudo passwd -u root
+passwd: password expiry information changed.
+
+Then change the root password:
+
+vagrant@lucid32:~$ sudo passwd root
+Enter new UNIX password:
+Retype new UNIX password:
+passwd: password updated successfully
+
+(thought would like to include this in the vagrant automation)
+
+
+
+10.
+
+Adding more databases in the VM
+This can be done in the standard Linux/MySQL way, at the command line for example.
+If you are creating many VMs using Vagrant (including from manifests from puphpet.com) you may want to consider adding creation of these from Vagrant to save manual effort, after all, that is what Vagrant is for. And for example puphpet.com will do the work for you by generating the necessary stuff in the vagrant files.
+
+Anyway, here's a standard way to create databases at the command line
+
+(Note: (I think) you'll need to have enabled the root user and know the password to do this - see previous steps)
+
+mysqladmin -u root -p create drupal
+(enter password)
+
+mysql -u root -p
+(enter password)
+
+GRANT ALL PRIVILEGES ON drupal.* TO drupaldbuser@localhost IDENTIFIED BY 'fuffy';
+
+Replace:
+- drupaldbuser with the name that you would like for the MySQL database user that Drupal will use to access the database
+- fuffy with the password you want for this user
+- drupal with the name of the database you want drupal to use
+
+e.g.
+
+my setup for a drupal8 setup:
+
+(logged in as root)
+
+mysqladmin -u root -p create drupal8
+password: root
+
+mysql -u root -p
+root
+GRANT ALL PRIVILEGES ON drupal8.* TO drupal8@localhost IDENTIFIED BY 'drupal8';
+
+Note all of the above for when you run the drupal installer
+
+(credit: https://drupal.org/node/22675)
+
+
+
+11.
+
+Getting Drupal on the system
+
+
+Multiple site development
+It's a good point to touch upon approaches to multi-site development. For Drupal (and other technologies) there are several approaches:
+- separate VMs for each site
+  - benefits: if your sites have various complex backends, e.g. interfacing with other technologies. By defining separate VMs means that only the necessary goes into the Vagrant scripts and config of the VM
+  - disadvantage: resource heavy, more configs to manage, but it can be done with suitable way of working, use of git etc.
+- separate folders (in website root) and databases on one VM
+  - benefits: compartmentalise each website on the VM, share the same general config of the VM - savings in time for setup
+  - disadvantage: sites coupled to the general config of the VM, any thing exotic or special required for a site might need reconfig of the VM (risk of breaking the other sites)
+- (for Drupal) use the sites folder and manage multiple sites there
+  - benefits: as with separate folders savings because sites share same config
+  - disadvantages: even further coupling - with the common drupal install (for example couldn't mix and match different versions of drupal). But again, can be managed, with git (and using .gitignore) to only versioncontrol the specifics of each site
+
+
+some options:
+- download drupal7 .zip file from drupal.org
+- drush (section to be written for this guide - I use drush a lot, and would need to do a write up here, regarding install)
+- drupal8: git clone
+
+Get Drupal 8 on the system
+- log into the guest vm (as root - see step)
+- git is already installed on this guest vm (as it was either already part of wheezy64 or the vagrant files installed it)
+
+cd to the web server root path - i.e.:-
+cd /var/www
+
+get drupal8
+git clone http://git.drupal.org/project/drupal.git drupal8
+
+(the drupal 8 bit at the end is optional - if left off you will get this stuff in a folder just called drupal. I prefer to name the folder with the version so I know what I am working on, not essential though, just a way of working)
+
+(credit/reference: http://drupalladder.org/lesson/027b5839-7a74-af04-6905-fee2d01c7ef4 )
+
+
+
+12.
+
+Run the drupal install
+- e.g. kick it off via the web: http://192.168.56.101/drupal8/
+
+12b NOTE: Apache directive AllowOverride All needed to ensure clean-urls work for Drupal (and perhaps indeed other frameworks) - full exact details as to what to do here: https://drupal.org/node/735500#comment-7712261
+
+
+
+O P T I O N A L
+
+
+13.
+
+komodo (v8 - ought to work with earlier) debug setup
+http://downloads.activestate.com/Komodo/releases/8.0.2/remotedebugging/
+
+Choose Komodo-PHPRemoteDebugging-8.0.2-78971-linux-x86_64.tar.gz 
+
+
+14.
+
+extract the contents
+
+For this VM, the version of php is 5.4
+(can also check the version it in the vm at the commandline by typing php -v)
+
+So navigate to the extracted content folder '5.4' where you will find ActiveState Komodo's especially compiled version of xdebug.so
+
+open a terminal session / command line window
+
+cd to the 5.4 folder (or wherever you moved the ActiveState Komodo's especially compiled version of xdebug.so to )
+
+sftp root@ipaddressofvm
+
+where ipaddressofvm is the ip address of the vm, e.g. 192.168.56.101
+
+sftp root@192.168.56.101
+password root
+
+once in sftp, go to the usual location of xdebug.so
+For this wheezy64 setup this is:
+/usr/lib/php5/20100525/xdebug.so
+
+you may want to keep the existing xdebug.so for other purposes so rename it
+e.g.
+sftp> rename xdebug.so xdebug.so.default
+
+then place ActiveState Komodo's especially compiled version of xdebug.so in the folder
+issue the command:
+put xdebug.so
+
+
+15.
+
+ssh in as root 
+
+need to add some xdebug config lines to the php.ini
+find the path of the php.ini file by issuing
+php --ini
+
+(e.g. for this distro on this vm it would be: /etc/php5/cli/php.ini)
+
+At the end of the php.ini file (logged in as root), add the following
+
+; xdebug config for Linux and Mac OS X
+zend_extension="/usr/lib/php5/20100525/xdebug.so"
+xdebug.remote_enable=1
+xdebug.remote_handler=dbgp
+xdebug.remote_mode=req
+xdebug.remote_host=127.0.0.1
+xdebug.remote_port=9000
+xdebug.idekey=<idekey>
+; You may also want this - to always start a remote debugging connection.
+;xdebug.remote_autostart=1
+
+save the file and exit
+
+reference:
+http://docs.activestate.com/komodo/8.0/debugphp.html
+
+
+note about the line: 
+zend_extension="/usr/lib/php5/20100525/xdebug.so" ; (path to the xdebug.so file (which is now ActiveState Komodo's especially compiled version of xdebug.so - note this path location varies with linux distributions and versions of php)
+
+restart apache - I think this is necessary for the changes to take effect
+
+
+16. restart apache
+
+/etc/init.d/apache2 restart
+
+credit/reference:
+http://www.cyberciti.biz/faq/star-stop-restart-apache2-webserver/
+
+
+
+17. Launch Komodo, create new project - specify path to be the drupal folder on the VM (in step 11) - folder is shared with host and it is a subfolder off the vagrant folder of the host - where you unzipped vagrant to and run vagrant up from e.g. vagrant/wheezy64/drupal8
+
+18. Set komodo debugger preferences to listen on 9000
+
+
+19. Find a bit of your website code in Komodo that you know will be executed when the front page of the site is visited, set a breakpoint there
+
+20. Visit the site on a browser,
+
+http://192.168.56.101/drupal8/index.php?XDEBUG_SESSION_START=1
+
+
+21. Observe that Komodo breaks on the breakpoint and asks about URI mapping (one-off question) - specify the local path as in 17. You can also set this up beforehand in URI settings in preferences to avoid being asked.
+
+Detail:
+
+Will be prompted about URI mapping in Komodo
+- this is so that komodo can edit the files on the VM as you develop
+
+file://192.168.56.101/var/www/drupal8
+/Users/robdaviswork/work/projects/vagrant/wheezy64/drupal8
+
+
+
+
+
+
+
+rough notes:
+(only observations - didn't affect the workings, but just for reference, issue with xhprof - but my setup still worked)
+
+root@debian-70rc1-x64-vbox4210:~# 
+root@debian-70rc1-x64-vbox4210:~# 
+root@debian-70rc1-x64-vbox4210:~# /etc/init.d/apache2 restart
+[....] Restarting web server: apache2Warning: DocumentRoot [/var/www/xhprof/xhprof_html] does not exist
+ ... waiting Warning: DocumentRoot [/var/www/xhprof/xhprof_html] does not exist
+. ok 
+root@debian-70rc1-x64-vbox4210:~# 
